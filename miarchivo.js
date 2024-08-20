@@ -1,5 +1,6 @@
-let total = 0;
-let carrito = [];
+let totalCarrito = 0;
+let itemsCarrito = JSON.parse(localStorage.getItem('carritoGuardado')) || [];
+let vistaActual = 'tienda'; // Puede ser 'tienda' o 'resultados'
 
 const vino1 = { nombre: "Malbec 1893", precio: 12000 };
 const vino2 = { nombre: "Malbec Piuke", precio: 10000 };
@@ -10,77 +11,117 @@ const vino6 = { nombre: "Blanco Torrones Familia Tornaghi", precio: 13000 };
 
 const vinos = [vino1, vino2, vino3, vino4, vino5, vino6];
 
-function agregarAlCarrito(vino) {
-    carrito.push(vino);
-    total += vino.precio;
+function agregarAlCarrito(indice) {
+    const vinoSeleccionado = vinos[indice];
+    itemsCarrito.push(vinoSeleccionado);
+    totalCarrito += vinoSeleccionado.precio;
+    actualizarLocalStorage();
     mostrarCarrito();
 }
 
 function mostrarCarrito() {
-    let carritoDiv = document.getElementById('carrito');
-    let resumen = "Productos en tu carrito:\n";
-    carrito.forEach(vino => {
-        resumen += vino.nombre + " - $" + vino.precio + "\n";
+    const carritoDiv = document.getElementById('resumen-carrito');
+    let resumen = '';
+    itemsCarrito.forEach(item => {
+        resumen += `${item.nombre} - $${item.precio}<br>`;
     });
-    resumen += "\nMonto total: $" + total + "\nMuchas gracias, vuelva pronto!";
-    carritoDiv.textContent = resumen;
+    resumen += `<br><strong>Total: $${totalCarrito}</strong><br>¡Muchas gracias por tu compra!`;
+    carritoDiv.innerHTML = resumen;
 }
 
-function buscarVinoPorNombre(nombre) {
-    return vinos.find(vino => vino.nombre.toLowerCase().includes(nombre.toLowerCase()));
+function actualizarLocalStorage() {
+    localStorage.setItem('carritoGuardado', JSON.stringify(itemsCarrito));
+    localStorage.setItem('totalMonto', totalCarrito);
 }
 
-function filtrarVinosPorPrecio(maxPrecio) {
-    return vinos.filter(vino => vino.precio <= maxPrecio);
+function buscarPorNombre(terminoBusqueda) {
+    return vinos.filter(item => item.nombre.toLowerCase().includes(terminoBusqueda.toLowerCase()));
 }
 
-document.getElementById('iniciarCompra').addEventListener('click', () => {
-    let producto;
-    do {
-        producto = parseInt(prompt("Seleccione el Vino que desea comprar:\n" + 
-            "1. " + vino1.nombre + " - $" + vino1.precio + "\n" +
-            "2. " + vino2.nombre + " - $" + vino2.precio + "\n" +
-            "3. " + vino3.nombre + " - $" + vino3.precio + "\n" +
-            "4. " + vino4.nombre + " - $" + vino4.precio + "\n" +
-            "5. " + vino5.nombre + " - $" + vino5.precio + "\n" +
-            "6. " + vino6.nombre + " - $" + vino6.precio + "\n" +
-            "0. Terminar compra"));
+function filtrarPorPrecio(precioMaximo) {
+    return vinos.filter(item => item.precio <= precioMaximo);
+}
 
-        switch (producto) {
-            case 1: agregarAlCarrito(vino1); break;
-            case 2: agregarAlCarrito(vino2); break;
-            case 3: agregarAlCarrito(vino3); break;
-            case 4: agregarAlCarrito(vino4); break;
-            case 5: agregarAlCarrito(vino5); break;
-            case 6: agregarAlCarrito(vino6); break;
-            case 0: break;
-            default: alert("No seleccionaste un Vino válido"); break;
-        }
-    } while (producto !== 0);
+function renderizarProductos() {
+    const contenedorProductos = document.getElementById('contenedor-productos');
+    contenedorProductos.innerHTML = '';
+    vinos.forEach((item, index) => {
+        const divProducto = document.createElement('div');
+        divProducto.innerHTML = `<strong>${item.nombre}</strong> - $${item.precio} <button onclick="agregarAlCarrito(${index})">Agregar</button>`;
+        contenedorProductos.appendChild(divProducto);
+    });
+}
 
-    mostrarCarrito();
-});
-
-document.getElementById('buscarPorNombre').addEventListener('click', () => {
-    let nombre = prompt("Ingrese el nombre del vino que desea buscar:");
-    let vinoEncontrado = buscarVinoPorNombre(nombre);
-    if (vinoEncontrado) {
-        alert("Vino encontrado:\n" + vinoEncontrado.nombre + " - $" + vinoEncontrado.precio);
-    } else {
-        alert("No se encontró un vino con ese nombre.");
-    }
-});
-
-document.getElementById('filtrarPorPrecio').addEventListener('click', () => {
-    let maxPrecio = parseInt(prompt("Ingrese el precio máximo:"));
-    let vinosFiltrados = filtrarVinosPorPrecio(maxPrecio);
-    if (vinosFiltrados.length > 0) {
-        let mensaje = "Vinos encontrados:\n";
-        vinosFiltrados.forEach(vino => {
-            mensaje += vino.nombre + " - $" + vino.precio + "\n";
+document.getElementById('boton-buscar').addEventListener('click', () => {
+    const terminoBusqueda = document.getElementById('entrada-busqueda').value.toLowerCase();
+    const vinosEncontrados = buscarPorNombre(terminoBusqueda);
+    vistaActual = 'resultados';
+    const resultadosDiv = document.getElementById('resultados-busqueda');
+    if (vinosEncontrados.length > 0) {
+        let mensaje = 'Vinos encontrados:<br>';
+        vinosEncontrados.forEach(item => {
+            mensaje += `${item.nombre} - $${item.precio}<br>`;
         });
-        alert(mensaje);
+        resultadosDiv.innerHTML = mensaje;
     } else {
-        alert("No se encontraron vinos por debajo de ese precio.");
+        resultadosDiv.innerHTML = 'No se encontró ningún vino con ese nombre.';
     }
+    document.getElementById('boton-volver').style.display = 'inline';
 });
+
+document.getElementById('boton-filtrar').addEventListener('click', () => {
+    const precioMaximo = parseInt(document.getElementById('entrada-precio').value);
+    const vinosFiltrados = filtrarPorPrecio(precioMaximo);
+    vistaActual = 'resultados';
+    const resultadosDiv = document.getElementById('resultados-busqueda');
+    if (vinosFiltrados.length > 0) {
+        let mensaje = 'Vinos filtrados:<br>';
+        vinosFiltrados.forEach(item => {
+            mensaje += `${item.nombre} - $${item.precio}<br>`;
+        });
+        resultadosDiv.innerHTML = mensaje;
+    } else {
+        resultadosDiv.innerHTML = 'No se encontraron vinos por debajo de ese precio.';
+    }
+    document.getElementById('boton-volver').style.display = 'inline';
+});
+
+document.getElementById('boton-vaciar-carrito').addEventListener('click', () => {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: '¿Quieres vaciar el carrito?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, vaciar',
+        cancelButtonText: 'No, mantener'
+    }).then((resultado) => {
+        if (resultado.isConfirmed) {
+            itemsCarrito = [];
+            totalCarrito = 0;
+            actualizarLocalStorage();
+            mostrarCarrito();
+            Swal.fire({
+                title: 'Carrito vacío',
+                text: 'Tu carrito ha sido vaciado.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+});
+
+document.getElementById('boton-volver').addEventListener('click', () => {
+    vistaActual = 'tienda';
+    document.getElementById('resultados-busqueda').innerHTML = '';
+    document.getElementById('boton-volver').style.display = 'none';
+    renderizarProductos();
+});
+
+if (localStorage.getItem('totalMonto')) {
+    totalCarrito = parseInt(localStorage.getItem('totalMonto'));
+}
+mostrarCarrito();
+if (vistaActual === 'tienda') {
+    renderizarProductos();
+    document.getElementById('boton-volver').style.display = 'none';
+}
